@@ -160,6 +160,7 @@
     <ClCompile Include="Src\Light.cpp" />
     <ClCompile Include="Src\Main.cpp" />
     <ClCompile Include="Src\MainGameScene.cpp" />
+    <ClCompile Include="Src\Materials\DeathEffectMaterial.cpp" />
     <ClCompile Include="Src\Mesh.cpp" />
     <ClCompile Include="Src\SceneManager.cpp" />
     <ClCompile Include="Src\Shader.cpp" />
@@ -170,6 +171,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Res\DeathEffect.frag" />
     <None Include="Res\Filter_Hatching.frag" />
     <None Include="Res\Filter_Outline.frag" />
     <None Include="Res\Filter_Posterization.frag" />
@@ -196,6 +198,8 @@
     <ClInclude Include="Src\GameData.h" />
     <ClInclude Include="Src\Light.h" />
     <ClInclude Include="Src\MainGameScene.h" />
+    <ClInclude Include="Src\Material.h" />
+    <ClInclude Include="Src\Materials\DeathEffectMaterial.h" />
     <ClInclude Include="Src\Mesh.h" />
     <ClInclude Include="Src\SceneManager.h" />
     <ClInclude Include="Src\Shader.h" />
@@ -206,6 +210,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Res\Black.tga" />
+    <Image Include="Res\DeathEffect.tga" />
     <Image Include="Res\Ground.tga" />
     <Image Include="Res\Hatching.tga" />
     <Image Include="Res\House.tga" />

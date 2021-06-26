@@ -7,6 +7,7 @@
 #include "Texture.h"
 #include "Mesh.h"
 #include "Shader.h"
+#include "Material.h"
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
@@ -76,6 +77,7 @@ public:
     shadow, // 影描画.
   };
   void Draw(const Shader::Pipeline& pipeline, const glm::mat4& matVP, DrawType) const;
+  void Draw(const glm::mat4& matVP, DrawType) const;
 
   void SetCylinderCollision(float top, float bottom, float radius);
   void SetBoxCollision(const glm::vec3& min, const glm::vec3& max);
@@ -111,6 +113,8 @@ public:
   std::shared_ptr<Texture::Image2D> texMetallicSmoothness;
   std::shared_ptr<Texture::Sampler> samplers[3];
 
+  std::shared_ptr<Material> material;
+  
   glm::vec3 position = glm::vec3(0); // アクターの表示位置.
   glm::vec3 rotation = glm::vec3(0); // アクターの向き.
   glm::vec3 scale = glm::vec3(1); // アクターの大きさ.

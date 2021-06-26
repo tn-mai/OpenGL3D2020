@@ -234,6 +234,26 @@ bool Pipeline::SetViewPosition(const glm::vec3& position) const
 }
 
 /**
+* シェーダにタイマー値を設定する.
+*
+* @param time 設定するタイマー値.
+*
+* @retval true  設定成功.
+* @retval false 設定失敗.
+*/
+bool Pipeline::SetEffectTimer(float time) const
+{
+  glGetError(); // エラー状態をリセット.
+
+  const GLint locTime = 8;
+  glProgramUniform1f(fp, locTime, time);
+  if (glGetError() != GL_NO_ERROR) {
+    std::cerr << "[エラー]" << __func__ << ":タイマー値の設定に失敗.\n";
+    return false;
+  }
+  return true;
+}
+/**
 * プログラムパイプラインのバインドを解除する.
 */
 void UnbindPipeline()

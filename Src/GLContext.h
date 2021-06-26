@@ -34,7 +34,7 @@ GLuint CreateProgram(GLenum type, const GLchar* code);
 GLuint CreateProgramFromFile(GLenum type, const char* filename);
 GLuint CreatePipeline(GLuint vp, GLuint fp);
 GLuint CreateImage2D(GLsizei width, GLsizei height, const void* data, GLenum format, GLenum type, GLenum internalFormat);
-GLuint CreateImage2D(const char* filename, GLenum internalFormat = GL_SRGB8_ALPHA8);
+GLuint CreateImage2D(const char* filename, GLenum internalFormat);
 GLuint CreateSampler();
 
 } // namespace GLContext

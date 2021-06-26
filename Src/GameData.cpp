@@ -179,6 +179,10 @@ bool GameData::Initialize(GLFWwindow* window)
   if (!pipelineOutline || !*pipelineOutline) {
     return false;
   }
+  pipelineDeathEffect = std::make_shared<Shader::Pipeline>("Res/FragmentLighting.vert", "Res/DeathEffect.frag");
+  if (!pipelineDeathEffect|| !*pipelineDeathEffect) {
+    return false;
+  }
 
   // サンプラ・オブジェクトを作成する.
   sampler.SetWrapMode(GL_REPEAT);
@@ -292,11 +296,11 @@ bool GameData::Initialize(GLFWwindow* window)
   anmBigZombieDown = LoadAnimation("Res/big_zombie/big_zombie_down", 8, 0.25f, false);
   anmBigZombieAttack = LoadAnimation("Res/big_zombie/big_zombie_attack_front", 7, 0.15f, false);
 
-  texBlood = std::make_shared<Texture::Image2D>("Res/blood.tga");
-  texHatching = std::make_shared<Texture::Image2D>("Res/Hatching.tga");
+  texBlood = std::make_shared<Texture::Image2D>("Res/blood.tga", Texture::ImageType::color);
+  texHatching = std::make_shared<Texture::Image2D>("Res/Hatching.tga", Texture::ImageType::color);
 
-  texGroundNormal = std::make_shared<Texture::Image2D>("Res/Ground_normal.tga", false);
-  texZombieNormal = std::make_shared<Texture::Image2D>("Res/zombie_male/zombie_male_normal.tga", false);
+  texGroundNormal = std::make_shared<Texture::Image2D>("Res/Ground_normal.tga", Texture::ImageType::non_color);
+  texZombieNormal = std::make_shared<Texture::Image2D>("Res/zombie_male/zombie_male_normal.tga", Texture::ImageType::non_color);
 
   std::cout << "[情報] ゲームデータの初期化を完了.\n";
   return true;

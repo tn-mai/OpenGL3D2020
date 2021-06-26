@@ -22,6 +22,9 @@
     <Filter Include="ソース ファイル\Actors">
       <UniqueIdentifier>{93750975-cbbe-4d09-a421-1b841f9b22c0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Materials">
+      <UniqueIdentifier>{5b5fa83e-06aa-4f24-af4d-6f50eca47491}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Src\Main.cpp">
@@ -81,6 +84,9 @@
     <ClCompile Include="Src\Light.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Src\Materials\DeathEffectMaterial.cpp">
+      <Filter>ソース ファイル\Materials</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -118,6 +124,9 @@
       <Filter>リソース ファイル</Filter>
     </None>
     <None Include="Res\Filter_Outline.frag">
+      <Filter>リソース ファイル</Filter>
+    </None>
+    <None Include="Res\DeathEffect.frag">
       <Filter>リソース ファイル</Filter>
     </None>
   </ItemGroup>
@@ -179,6 +188,12 @@
     <ClInclude Include="Src\Light.h">
       <Filter>ソース ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="Src\Material.h">
+      <Filter>ソース ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Materials\DeathEffectMaterial.h">
+      <Filter>ソース ファイル\Materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Res\Ground.tga">
@@ -197,6 +212,9 @@
       <Filter>リソース ファイル</Filter>
     </Image>
     <Image Include="Res\Hatching.tga">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="Res\DeathEffect.tga">
       <Filter>リソース ファイル</Filter>
     </Image>
   </ItemGroup>

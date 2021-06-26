@@ -66,7 +66,9 @@ int main()
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-  //glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+
+  glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+
   GLFWwindow* window =
     glfwCreateWindow(1280, 720, "OpenGL3DActionGame", nullptr, nullptr);
   if (!window) {
@@ -115,6 +117,7 @@ int main()
     Output(GL_MAX_TEXTURE_BUFFER_SIZE); // è≠Ç»Ç≠Ç∆Ç‡64k
     Output(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS); // è≠Ç»Ç≠Ç∆Ç‡8
     Output(GL_MAX_SHADER_STORAGE_BLOCK_SIZE); // è≠Ç»Ç≠Ç∆Ç‡16MB
+    Output(GL_MIN_MAP_BUFFER_ALIGNMENT);
 #undef Output
   }
 

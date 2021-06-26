@@ -2,6 +2,7 @@
 * @file ZombieActor.cpp
 */
 #include "ZombieActor.h"
+#include "../Materials/DeathEffectMaterial.h"
 #include "../MainGameScene.h"
 #include "../GameData.h"
 #include "../Audio.h"
@@ -19,12 +20,12 @@
 ZombieActor::ZombieActor(const glm::vec3& pos, float rotY,
   MainGameScene* pScene) :
   Actor("zombie", nullptr,
-    std::make_shared<Texture::Image2D>("Res/zombie_male.tga"),
+    Texture::CreateImage2D("Res/zombie_male.tga", Texture::ImageType::color),
     pos),
   pMainGameScene(pScene)
 {
   texMetallicSmoothness =
-    std::make_shared<Texture::Image2D>("Res/zombie_male/zombie_male_spec.tga", false);
+    Texture::CreateImage2D("Res/zombie_male/zombie_male_spec.tga", Texture::ImageType::non_color);
 
   // d—Í‚Ì‰e‹¿—¦‚ðÝ’è.
   gravityScale = 1;
@@ -94,6 +95,10 @@ ZombieActor::ZombieActor(const glm::vec3& pos, float rotY,
         zombie.pMainGameScene->AddBloodSprite(zombie.position);
       }
       Audio::Instance().Play(3, CRI_SE_GUTTING_1);
+    }
+
+    if (a.state == State::dead) {
+      a.material = std::make_shared<DeathEffectMaterial>();
     }
   };
 
@@ -203,5 +208,12 @@ void ZombieActor::OnUpdate(float deltaTime)
     }
   } else if (state != State::dead) {
     velocity.x = velocity.z = 0;
+  } else if (state == State::dead) {
+    if (material) {
+      DeathEffectMaterial& m = static_cast<DeathEffectMaterial&>(*material);
+      if (m.IsFinish()) {
+        isDead = true;
+      }
+    }
   }
 }

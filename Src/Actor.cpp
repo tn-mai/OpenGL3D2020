@@ -20,7 +20,9 @@ const float maxMorphTransitionTime = 0.2f;
 */
 Actor::Actor(std::string name, const Mesh::Primitive* prim,
   std::shared_ptr<Texture::Image2D> tex, const glm::vec3& pos) :
-  name(name), primitive(prim), texture(tex), position(pos)
+  name(name), primitive(prim), texture(tex),
+  material(std::make_shared<Material>(GameData::Get().pipeline)),
+  position(pos)
 {
 }
 
@@ -134,6 +136,11 @@ void Actor::Update(float deltaTime)
     }
     morphTarget = animation->list[nextAnimationNo];
   }
+
+  // マテリアル更新.
+  if (material) {
+    material->Update(deltaTime);
+  }
 }
 
 /**
@@ -215,6 +222,21 @@ void Actor::Draw(const Shader::Pipeline& pipeline, const glm::mat4& matVP,
 
   // プリミティブを描画.
   primitive->Draw(morphTarget, prevBaseMesh, prevMorphTarget);
+}
+
+/**
+* アクターを描画する.
+*
+* @param matVP    描画に使用するビュープロジェクション行列.
+* @param drawType 描画の種類.
+*/
+void Actor::Draw(const glm::mat4& matVP, DrawType drawType) const
+{
+  if (material && material->pipeline) {
+    material->OnDraw();
+    material->pipeline->Bind();
+    Draw(*material->pipeline, matVP, drawType);
+  }
 }
 
 /**

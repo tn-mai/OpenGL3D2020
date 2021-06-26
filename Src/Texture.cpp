@@ -3,6 +3,7 @@
 */
 #include "Texture.h"
 #include "GLContext.h"
+#include <unordered_map>
 #include <iostream>
 
 // インテルグラフィックスドライバのバグによりglBindTextureUnit(i, 0)が機能しないことへの対応.
@@ -39,6 +40,11 @@ GLuint textureBindingState[16] = {};
 * サンプラのバインド状態を追跡するための配列.
 */
 GLuint samplerBindingState[16] = {};
+
+/**
+* テクスチャ・キャッシュ.
+*/
+std::unordered_map<std::string, std::shared_ptr<Image2D>> textureCache;
 
 } // unnamed namespace
 
@@ -102,16 +108,79 @@ void UnbindAllSamplers()
 }
 
 /**
+* 2Dテクスチャを作成する.
+*
+* @param filename 2Dテクスチャとして読み込むファイル名.
+* @param imageType 画像の種類.
+* 
+* @return 作成したテクスチャ.
+*/
+std::shared_ptr<Image2D> CreateImage2D(const char* filename, ImageType imageType)
+{
+  // キャッシュを検索し、同名のテクスチャが見つけたら、見つけたテクスチャを返す.
+  auto itr = textureCache.find(filename);
+  if (itr != textureCache.end()) {
+    return itr->second;
+  }
+
+  // キャッシュに同名のテクスチャがなかったので、新しくテクスチャを作る.
+  // 作成したテクスチャをテクスチャキャッシュに追加し、さらに戻り値として返す.
+  std::shared_ptr<Image2D> p = std::make_shared<Image2D>(filename, imageType);
+  textureCache.emplace(filename, p);
+  return p;
+}
+
+/**
+* テクスチャキャッシュを空にする.
+*/
+void ClearTextureCache()
+{
+  textureCache.clear();
+}
+
+/**
+* 画像の種類に対応するGPU側のピクセル形式を取得する.
+*
+* @param imageType 画像の種類.
+*
+* @return typeに対応するGPU側のピクセル形式.
+*/
+GLenum ToInternalFormat(ImageType imageType)
+{
+  switch (imageType) {
+  default:
+  case ImageType::framebuffer: return GL_RGBA8;
+  case ImageType::depthbuffer: return GL_DEPTH24_STENCIL8;
+  case ImageType::color:       return GL_SRGB8_ALPHA8;
+  case ImageType::non_color:   return GL_RGBA8;
+  }
+}
+
+/**
 * コンストラクタ.
 *
 * @param filename 2Dテクスチャとして読み込むファイル名.
+* @param imageType 画像の種類.
 */
-Image2D::Image2D(const char* filename, bool isSRGB) : name(filename),
-  id(GLContext::CreateImage2D(filename, isSRGB ? GL_SRGB8_ALPHA8 : GL_RGBA8))
+Image2D::Image2D(const char* filename, ImageType imageType) :
+  name(filename),
+  id(GLContext::CreateImage2D(filename, ToInternalFormat(imageType)))
 {
   if (id) {
     glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_WIDTH, &width);
     glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_HEIGHT, &height);
+  }
+  if (id) {
+    GLint internalFormat;
+    glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+    const char* ifname;
+    switch (internalFormat) {
+    default: ifname = "(unknown)"; break;
+    case GL_RGBA8: ifname = "GL_RGBA8"; break;
+    case GL_SRGB8_ALPHA8: ifname = "GL_SRGB8_ALPHA8"; break;
+    }
+    std::cout << "[情報]" << __func__ << "テクスチャ" << filename << "を作成(" <<
+      width << "x" << height << " " << ifname << ").\n";
   }
 }
 
@@ -124,16 +193,36 @@ Image2D::Image2D(const char* filename, bool isSRGB) : name(filename),
 * @param data    画像データへのポインタ.
 * @param pixelFormat  画像のピクセル形式(GL_BGRAなど).
 * @param type    画像データの型.
-* @param internalFormat メモリに格納するときのピクセル形式.
+* @param imageType 画像の種類.
 */
 Image2D::Image2D(const char* name, GLsizei width, GLsizei height, const void* data,
-  GLenum format, GLenum type, GLenum internalFormat) :
+  GLenum pixelFormat, GLenum type, ImageType imageType) :
   name(name),
-  id(GLContext::CreateImage2D(width, height, data, format, type, internalFormat))
+  id(GLContext::CreateImage2D(width, height, data, pixelFormat, type,
+    ToInternalFormat(imageType)))
 {
   if (id) {
     glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_WIDTH, &width);
     glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_HEIGHT, &height);
+  }
+  
+  if (id) {
+    const char* pfname;
+    switch (pixelFormat) {
+    default: pfname = "GL_BGRA"; break;
+    case GL_BGR: pfname = "GL_BGR"; break;
+    case GL_RED: pfname = "GL_RED"; break;
+    }
+    const char* ifname;
+    switch (imageType) {
+    default: ifname = "(unknown)"; break;
+    case ImageType::framebuffer: ifname = "GL_RGBA8"; break;
+    case ImageType::depthbuffer: ifname = "GL_DEPTH24_STENCIL8"; break;
+    case ImageType::color:       ifname = "GL_SRGB8_ALPHA8"; break;
+    case ImageType::non_color:   ifname = "GL_RGBA8"; break;
+    }
+    std::cout << "[情報]" << __func__ << "テクスチャ" << name << "を作成(" <<
+      width << "x" << height << " " << pfname << " " << ifname << ").\n";
   }
 }
 

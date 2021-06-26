@@ -1,6 +1,6 @@
 #version 450
 
-#define USE_REAL_Z 0
+#define USE_REAL_Z 1
 
 // 入力変数
 layout(location=0) in vec4 inColor;
@@ -13,6 +13,75 @@ out vec4 fragColor;
 layout(binding=0) uniform sampler2D texColor;
 layout(binding=1) uniform sampler2D texHatching;
 layout(binding=2) uniform sampler2D texDepth;
+
+// ポアソンディスク配列
+// https://github.com/spite/Wagner/blob/master/fragment-shaders/poisson-disc-blur-fs.glsl
+const int poissonSampleCount = 12;
+const vec2 poissonDisc[poissonSampleCount] = {
+  {-0.326,-0.406},
+  {-0.840,-0.074},
+  {-0.696, 0.457},
+  {-0.203, 0.621},
+  { 0.962,-0.195},
+  { 0.473,-0.480},
+  { 0.519, 0.767},
+  { 0.185,-0.893},
+  { 0.507, 0.064},
+  { 0.896, 0.412},
+  {-0.322,-0.933},
+  {-0.792,-0.598}
+};
+
+// カメラパラメータ(単位:メートル).
+const float cameraNear = 1.0;   // カメラのニア平面までの距離.
+const float cameraFar = 500.0;  // カメラのファー平面までの距離.
+
+// ボケパラメータ(単位:メートル).
+const float focusPoint = 10.0; // カメラから注視点までの距離
+const float bokehStart = 2.0;  // ボケ始める範囲
+const float bokehEnd   = 6.0;  // ボケが最大になる範囲
+const float bokehPower = 5.0;  // ボケの強さ
+
+/**
+* 奥行きからボケ度合いを計算.
+*/
+float GetBokehValue()
+{
+  // glm::perspective関数の逆の計算を行って、深度バッファの値を視点からのメートル距離に変換.
+  float z = texture(texDepth, inTexcoord).r;
+  z = 2.0 * z - 1.0;
+  z = -(2 * cameraNear * cameraFar) / (cameraFar + cameraNear - z * (cameraFar - cameraNear));
+
+  // ボケ度合いを計算.
+  z = abs(z + focusPoint);
+  z = max(z - bokehStart, 0.0);
+  z = min(z / (bokehEnd - bokehStart), 1.0);
+  return z;
+}
+
+/**
+* ボケ度合いに応じて画像をぼかす.
+*
+* @param texBokeh  ぼかしに使うテクスチャ.
+* @param bokeh     ボケ度合い(0.0～1.0).
+*
+* @return ぼかしたピクセルの色.
+*/
+vec4 ApplyBokehEffect(sampler2D texBokeh, float bokeh)
+{
+  // 円形の範囲のピクセルを読み込む. zに応じて円の半径が変わる.
+  vec2 subPixelSize = vec2(1.0) / textureSize(texBokeh, 0);
+  vec4 bokehColor = texture(texBokeh, inTexcoord);
+  for (int i = 0; i < poissonSampleCount; ++i) {
+    vec2 offset = subPixelSize * poissonDisc[i] * bokeh * bokehPower;
+    bokehColor += texture(texBokeh, inTexcoord + offset);
+  }
+
+  // 平均を求める.
+  bokehColor *= 1.0 / float(poissonSampleCount + 1);
+
+  return bokehColor;
+}
 
 float GetZ(vec2 offset)
 {
@@ -32,7 +101,9 @@ float GetZ(vec2 offset)
 void main()
 {
   // カラーを取得.
-  fragColor = inColor * texture(texColor, inTexcoord);
+  float bokeh = GetBokehValue();
+  fragColor = inColor * ApplyBokehEffect(texColor, bokeh);
+
   vec2 screenSize = vec2(1280, 720);
   vec2 texPencilSize = textureSize(texHatching, 0);
   vec2 texcoord = fract(inTexcoord * (screenSize / texPencilSize));
@@ -63,5 +134,5 @@ void main()
   outline = 1 - smoothstep(0.0, 0.01, abs(outline)); // 輪郭線ではない部分を1にする.
 
   // 斜線と輪郭の色を元の色に乗算.
-  fragColor.rgb *= pencil * outline;
+  fragColor.rgb *= mix(pencil * outline, vec3(1.0), bokeh);
 }

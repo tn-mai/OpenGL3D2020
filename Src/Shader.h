@@ -49,6 +49,7 @@ public:
   bool SetObjectColor(const glm::vec4&) const;
   bool SetMorphWeight(const glm::vec3& weight) const;
   bool SetViewPosition(const glm::vec3& position) const;
+  bool SetEffectTimer(float) const;
 
 private:
   GLuint id = 0;

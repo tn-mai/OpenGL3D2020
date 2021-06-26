@@ -38,6 +38,9 @@ public:
   // フレームバッファオブジェクトIDを取得する.
   GLuint GetId() const { return fbo; }
 
+  int GetWidht() const { return width; }
+  int GetHeight() const { return height; }
+
 private:
   GLuint fbo = 0;
   std::shared_ptr<Texture::Image2D> texColor;

@@ -139,6 +139,7 @@ public:
   std::shared_ptr<Shader::Pipeline> pipelinePosterization;
   std::shared_ptr<Shader::Pipeline> pipelineHatching;
   std::shared_ptr<Shader::Pipeline> pipelineOutline;
+  std::shared_ptr<Shader::Pipeline> pipelineDeathEffect;
   Mesh::PrimitiveBuffer primitiveBuffer;
   Texture::Sampler sampler;
   Texture::Sampler samplerClampToEdge;

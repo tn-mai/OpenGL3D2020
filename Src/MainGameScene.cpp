@@ -104,10 +104,6 @@ bool MainGameScene::Initialize()
   texTree   = std::make_shared<Texture::Image2D>("Res/Tree.tga");
   texHouse  = std::make_shared<Texture::Image2D>("Res/House.tga");
   texCube   = std::make_shared<Texture::Image2D>("Res/Rock.tga");
-  if (!texGround || !texTree || !texHouse || !texCube) {
-    return false;
-  }
-
   texZombie = std::make_shared<Texture::Image2D>("Res/zombie_male.tga");
   texPlayer = std::make_shared<Texture::Image2D>("Res/player_male.tga");
   texGameClear = std::make_shared<Texture::Image2D>("Res/Survived.tga");
@@ -120,9 +116,6 @@ bool MainGameScene::Initialize()
 
   GameData& global = GameData::Get();
 
-  std::random_device rd;
-  std::mt19937 random(rd());
-
   // 地面を表示.
   {
     std::shared_ptr<Actor> actor = std::make_shared<Actor>(
@@ -132,8 +125,9 @@ bool MainGameScene::Initialize()
     actor->samplers[0]->SetWrapMode(GL_REPEAT);
     actor->samplers[1] = actor->samplers[0];
     actor->samplers[2] = actor->samplers[0];
-    actor->texNormal = std::make_shared<Texture::Image2D>("Res/Ground_normal.tga", false);
-    actor->texMetallicSmoothness = std::make_shared<Texture::Image2D>("Res/Ground_spec.tga", false);
+    actor->texNormal = std::make_shared<Texture::Image2D>("Res/Ground_normal.tga", Texture::ImageType::non_color);
+    actor->texMetallicSmoothness =
+      std::make_shared<Texture::Image2D>("Res/Ground_spec.tga", Texture::ImageType::non_color);
     actor->SetBoxCollision(glm::vec3(-20, -10, -20), glm::vec3(20, 0, 20));
     actor->isShadowCaster = false;
     actors.push_back(actor);
@@ -482,6 +476,7 @@ void MainGameScene::Render(GLFWwindow* window) const
 
   // 描画先をフレームバッファオブジェクトに変更.
   fboMain->Bind();
+  glDisable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を無効にする
 
   GameData& global = GameData::Get();
   std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline;
@@ -489,21 +484,22 @@ void MainGameScene::Render(GLFWwindow* window) const
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
-  glEnable(GL_FRAMEBUFFER_SRGB);
+
   glClearColor(0.1f, 0.3f, 0.5f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   // 環境光を設定する.
-  //pipeline->SetAmbientLight(glm::vec3(0.1f, 0.125f, 0.15f)); // 昼
+  pipeline->SetAmbientLight(glm::vec3(0.1f, 0.125f, 0.15f)); // 昼
   //pipeline->SetAmbientLight(glm::vec3(0.09f, 0.05f, 0.1f)); // 夕方 
-  pipeline->SetAmbientLight(glm::vec3(0.02f, 0.01f, 0.03f)); // 夜
+  //pipeline->SetAmbientLight(glm::vec3(0.02f, 0.01f, 0.03f)); // 夜
+
 
   // 平行光源を設定する
   const Shader::DirectionalLight directionalLight{
     glm::normalize(glm::vec4(3,-2,-2, 0)),
-    //glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 4.0f, 1) // 昼
+    glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 4.0f, 1) // 昼
     //glm::vec4(glm::vec3(1, 0.5f, 0.2f) * 2.0f, 1) // 夕方
-    glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.5f, 1) // 夜
+    //glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.5f, 1) // 夜
   };
   pipeline->SetLight(directionalLight);
 
@@ -516,12 +512,19 @@ void MainGameScene::Render(GLFWwindow* window) const
   global.sampler.Bind(0);
   global.sampler.Bind(1);
   global.samplerClampToEdge.Bind(2);
+  global.samplerClampToEdge.Bind(3);
 
   // アクターリストを描画.
   pipeline->SetViewPosition(playerActor->position + glm::vec3(0, 7, 7));
+
+  std::shared_ptr<Shader::Pipeline> pipelineDeathEffect = global.pipelineDeathEffect;
+  pipelineDeathEffect->SetAmbientLight(glm::vec3(0.1f, 0.125f, 0.15f));
+  pipelineDeathEffect->SetLight(directionalLight);
+  pipelineDeathEffect->SetViewPosition(playerActor->position + glm::vec3(0, 7, 7));
+
   const glm::mat4 matVP = matProj * matView;
   for (size_t i = 0; i < actors.size(); ++i) {
-    actors[i]->Draw(*pipeline, matVP, Actor::DrawType::color);
+    actors[i]->Draw(matVP, Actor::DrawType::color);
   }
 
   global.samplerClampToEdge.Bind(2);
@@ -618,7 +621,8 @@ void MainGameScene::Render(GLFWwindow* window) const
 
   // 描画先をデフォルトのフレームバッファに戻す.
   fboMain->Unbind();
-  //glDisable(GL_FRAMEBUFFER_SRGB);
+
+  glEnable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を有効にする
 
   // 2D表示.
   {

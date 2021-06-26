@@ -29,6 +29,10 @@ const glm::uint maxLightCount = 1024; // シーン全体で使えるライトの最大数.
 struct SubFrustum
 {
   Plane planes[4]; // left, right, top, bottom
+
+  // for AABB
+  glm::vec3 aabbCenter;
+  glm::vec3 aabbHalfSize;
 };
 
 /**
@@ -95,7 +99,7 @@ glm::vec3 ScreenToView(const glm::vec3& p, const glm::mat4& matInvProj)
 * @return 作成したサブ視錐台.
 */
 SubFrustum CreateSubFrustum(const glm::mat4& matInvProj,
-  float x0, float y0, float x1, float y1)
+  float x0, float y0, float x1, float y1, float zNear, float zFar)
 {
   const glm::vec3 viewPos0 = ScreenToView(glm::vec3(x0, y0, 1), matInvProj);
   const glm::vec3 viewPos1 = ScreenToView(glm::vec3(x1, y0, 1), matInvProj);
@@ -103,12 +107,22 @@ SubFrustum CreateSubFrustum(const glm::mat4& matInvProj,
   const glm::vec3 viewPos3 = ScreenToView(glm::vec3(x0, y1, 1), matInvProj);
   const glm::vec3 p = glm::vec3(0);
 
-  return SubFrustum{
-    Plane{ p, glm::normalize(glm::cross(viewPos0, viewPos3)) },
-    Plane{ p, glm::normalize(glm::cross(viewPos2, viewPos1)) },
-    Plane{ p, glm::normalize(glm::cross(viewPos3, viewPos2)) },
-    Plane{ p, glm::normalize(glm::cross(viewPos1, viewPos0)) },
-  };
+  SubFrustum f;
+  f.planes[0] = Plane{ p, glm::normalize(glm::cross(viewPos0, viewPos3)) };
+  f.planes[1] = Plane{ p, glm::normalize(glm::cross(viewPos2, viewPos1)) };
+  f.planes[2] = Plane{ p, glm::normalize(glm::cross(viewPos3, viewPos2)) };
+  f.planes[3] = Plane{ p, glm::normalize(glm::cross(viewPos1, viewPos0)) };
+
+  const glm::vec3 viewPos0Near = viewPos0 * (zNear / zFar);
+  const glm::vec3 viewPos2Near = viewPos2 * (zNear / zFar);
+  const float xLeft = std::min(viewPos0.x, viewPos0Near.x);
+  const float xRight = std::max(viewPos2.x, viewPos2Near.x);
+  const float yBottom = std::min(viewPos0.y, viewPos0Near.y);
+  const float yTop = std::max(viewPos2.y, viewPos2Near.y);
+  f.aabbHalfSize = glm::vec3(xRight - xLeft, yTop - yBottom, zFar - zNear) * 0.5f;
+  f.aabbCenter = glm::vec3(xRight + xLeft, yTop + yBottom, -(zFar + zNear)) * 0.5f;
+
+  return f;
 }
 
 /**
@@ -125,7 +139,9 @@ FrustumPtr CreateFrustum(const glm::mat4& matProj, float zNear, float zFar)
   FrustumPtr frustum = std::make_shared<Frustum>();
 
   const glm::mat4& matInvProj = glm::inverse(matProj);
-  frustum->baseFrustum = CreateSubFrustum(matInvProj, 0, 0, screenSizeX, screenSizeY);
+  const float zHalfSize = (zFar - zNear) * 0.5f;
+  const float zCenter = -(zNear + zHalfSize);
+  frustum->baseFrustum = CreateSubFrustum(matInvProj, 0, 0, screenSizeX, screenSizeY, zNear, zFar);
   frustum->zNear = -zNear;
   frustum->zFar = -zFar;
 
@@ -137,7 +153,7 @@ FrustumPtr CreateFrustum(const glm::mat4& matProj, float zNear, float zFar)
       const float x1 = x0 + tileSize.x;
       const float y0 = static_cast<float>(y) * tileSize.y;
       const float y1 = y0 + tileSize.y;
-      frustum->tiles[y][x] = CreateSubFrustum(matInvProj, x0, y0, x1, y1);
+      frustum->tiles[y][x] = CreateSubFrustum(matInvProj, x0, y0, x1, y1, zNear, zFar);
     }
   }
   return frustum;
@@ -154,6 +170,10 @@ FrustumPtr CreateFrustum(const glm::mat4& matProj, float zNear, float zFar)
 */
 bool SphereInsideSubFrustum(const Sphere& sphere, const SubFrustum& frustum)
 {
+  const glm::vec3 d = glm::max(glm::vec3(0), glm::abs(frustum.aabbCenter - sphere.center) - frustum.aabbHalfSize);
+  if (glm::dot(d, d) > sphere.radius * sphere.radius) {
+    return false;
+  }
   for (const auto& plane : frustum.planes) {
     if (!SphereInsidePlane(sphere, plane)) {
       return false;
@@ -349,12 +369,13 @@ void LightManager::Update(const glm::mat4& matView, const FrustumPtr& frustum)
     const glm::vec3 pos = matView * glm::vec4(e->position, 1);
 
     // ライトの影響範囲を計算.
-    const float range = sqrt(
-      glm::max(e->color.r, glm::max(e->color.g, e->color.b))) * 3;
+    float range = sqrt(
+      glm::max(e->color.r, glm::max(e->color.g, e->color.b)));
 
     // ライトの影響範囲とメインフラスタムの交差判定を行う.
     if (e->type == Light::Type::PointLight) {
       // ポイントライトの判定.
+      range *= 1;
       const Sphere sphere = { pos, range };
       if (SphereInsideFrustum(sphere, *frustum)) {
         // 交差しているのでライトを登録.
@@ -374,6 +395,7 @@ void LightManager::Update(const glm::mat4& matView, const FrustumPtr& frustum)
     } else if (e->type == Light::Type::SpotLight) {
       // スポットライトの判定.
       // 60度より大きい場合は球で代用.
+      range *= 2;
       bool hasIntersect = false;
       if (e->coneAngle > glm::radians(60.0f)) {
         const Sphere sphere = { pos, range };
@@ -425,6 +447,23 @@ void LightManager::Update(const glm::mat4& matView, const FrustumPtr& frustum)
         const IntermediateData::Shape shape = dataView[i].shape;
         if (shape == IntermediateData::Shape::sphere) {
           if (SphereInsideSubFrustum(dataView[i].sphere, f)) {
+            /*
+            // 球の中心軸とサブフラスタムの最も近いX軸上の位置pzを計算.
+            float px = a.position.z;
+            if (px < b.position.x + b.collision.boxMin.z) {
+              px = b.position.z + b.collision.boxMin.z;
+            } else if (pz > b.position.z + b.collision.boxMax.z) {
+              px = b.position.z + b.collision.boxMax.z;
+            }
+            // 円柱の中心軸から最も近い点までの距離の2乗(d2)を計算.
+            const float dx = a.position.x - px;
+            const float dz = a.position.z - pz;
+            const float d2 = dx * dx + dz * dz;
+            // d2が円柱の半径の2乗以上なら衝突していない.
+            if (d2 >= a.collision.radius * a.collision.radius) {
+              return false;
+            }
+            */
             tileData->lightIndices[y][x][count] = i;
             ++count;
             if (count >= maxLightCountInTile) {
