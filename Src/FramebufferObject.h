@@ -12,7 +12,8 @@
 */
 enum class FboType {
   Color, // カラーバッファのみ.
-  ColorDepthStencil // カラー、深度、ステンシルバッファ.
+  Depth, // 深度バッファのみ.
+  ColorDepthStencil, // カラー、深度、ステンシルバッファ.
 };
 
 /**

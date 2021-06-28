@@ -99,6 +99,10 @@ bool MainGameScene::Initialize()
   if (!fboMain || !fboMain->GetId()) {
     return false;
   }
+  fboShadow = std::make_shared<FramebufferObject>(4096, 4096, FboType::Depth);
+  if (!fboShadow || !fboShadow->GetId()) {
+    return false;
+  }
 
   texGround = std::make_shared<Texture::Image2D>("Res/Ground.tga");
   texTree   = std::make_shared<Texture::Image2D>("Res/Tree.tga");
@@ -474,13 +478,67 @@ void MainGameScene::Render(GLFWwindow* window) const
     return;
   }
 
+  GameData& global = GameData::Get();
+  GameData& gamedata = GameData::Get();
+  std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline;
+  Mesh::PrimitiveBuffer& primitiveBuffer = global.primitiveBuffer;
+
+  const Shader::DirectionalLight directionalLight{
+    glm::normalize(glm::vec4(3,-2,-2, 0)),
+    glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 4.0f, 1) // 昼
+    //glm::vec4(glm::vec3(1, 0.5f, 0.2f) * 2.0f, 1) // 夕方
+    //glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.5f, 1) // 夜
+  };
+
+  // 影描画用FBOに描画する.
+  {
+    // 描画先を影描画用FBOに変更.
+    fboShadow->Bind();
+    glDisable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を無効にする.
+    glDisable(GL_BLEND); // アルファブレンドを無効にする.
+    glEnable(GL_DEPTH_TEST); // 深度テストを有効にする.
+    glEnable(GL_CULL_FACE); // 裏面カリングを有効にする.
+
+    // 深度バッファをクリア.
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    primitiveBuffer.BindVertexArray();
+    std::shared_ptr<Shader::Pipeline> pipelineShadow = gamedata.pipelineShadow;
+    pipelineShadow->Bind();
+    gamedata.sampler.Bind(0);
+
+    // 座標変換行列を作成.
+    const float halfW = 50;
+    const float halfH = 50;
+    glm::mat4 matProj =
+      glm::ortho(-halfW, halfW, -halfH, halfH, 20.0f, 200.0f);
+      //glm::perspective(glm::radians(30.0f), 1.0f, 20.0f, 200.0f);
+
+    const glm::vec3 viewPosition = playerActor->position - glm::vec3(directionalLight.direction) * 100.0f;
+    //const glm::vec3 viewPosition = -glm::vec3(directionalLight.direction) * 50.0f;
+    const glm::vec3 viewTarget = playerActor->position;
+    glm::mat4 matView =
+      glm::lookAt(viewPosition, viewTarget, glm::vec3(0, 1, 0));
+
+    glm::mat4 matShadowVP = matProj * matView;
+    for (size_t i = 0; i < actors.size(); ++i) {
+      actors[i]->Draw(*pipelineShadow, matShadowVP, Actor::DrawType::shadow);
+    }
+
+    // クリップ座標系からスクリーン座標系への座標変換行列を追加.
+    const glm::mat4 matBiasVP = glm::mat4(
+      0.5f, 0.0f, 0.0f, 0.0f,
+      0.0f, 0.5f, 0.0f, 0.0f,
+      0.0f, 0.0f, 0.5f, 0.0f,
+      0.5f, 0.5f, 0.5f, 1.0f
+    ) * matShadowVP;
+    pipeline->SetShadowMatrix(matBiasVP);
+    gamedata.pipelineDeathEffect->SetShadowMatrix(matBiasVP);
+  }
+
   // 描画先をフレームバッファオブジェクトに変更.
   fboMain->Bind();
   glDisable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を無効にする
-
-  GameData& global = GameData::Get();
-  std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline;
-  Mesh::PrimitiveBuffer& primitiveBuffer = global.primitiveBuffer;
 
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
@@ -495,12 +553,6 @@ void MainGameScene::Render(GLFWwindow* window) const
 
 
   // 平行光源を設定する
-  const Shader::DirectionalLight directionalLight{
-    glm::normalize(glm::vec4(3,-2,-2, 0)),
-    glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 4.0f, 1) // 昼
-    //glm::vec4(glm::vec3(1, 0.5f, 0.2f) * 2.0f, 1) // 夕方
-    //glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.5f, 1) // 夜
-  };
   pipeline->SetLight(directionalLight);
 
   //pipeline->SetLight(pointLight);
@@ -513,6 +565,7 @@ void MainGameScene::Render(GLFWwindow* window) const
   global.sampler.Bind(1);
   global.samplerClampToEdge.Bind(2);
   global.samplerClampToEdge.Bind(3);
+  global.samplerShadow.Bind(4);
 
   // アクターリストを描画.
   pipeline->SetViewPosition(playerActor->position + glm::vec3(0, 7, 7));
@@ -522,12 +575,17 @@ void MainGameScene::Render(GLFWwindow* window) const
   pipelineDeathEffect->SetLight(directionalLight);
   pipelineDeathEffect->SetViewPosition(playerActor->position + glm::vec3(0, 7, 7));
 
+  // シャドウテクスチャをバインド.
+  fboShadow->BindDepthStencilTexture(4);
+
   const glm::mat4 matVP = matProj * matView;
   for (size_t i = 0; i < actors.size(); ++i) {
     actors[i]->Draw(matVP, Actor::DrawType::color);
   }
 
+  global.samplerShadow.Unbind();
   global.samplerClampToEdge.Bind(2);
+  global.samplerClampToEdge.Bind(3);
 
   if (0) {
     // Y軸回転.
@@ -549,7 +607,7 @@ void MainGameScene::Render(GLFWwindow* window) const
   }
 
   // アクターの影を描画.
-  {
+  if (0) {
     // ステンシルバッファを有効にする.
     glEnable(GL_STENCIL_TEST);
     // 「比較に使う値」を1にして、常に比較が成功するように設定.
@@ -687,6 +745,17 @@ void MainGameScene::Render(GLFWwindow* window) const
       texPointer->Bind(0);
 
       // 上の設定が適用された四角形を描画.
+      primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+    }
+
+    // シャドウテクスチャの確認用.
+    if (false) {
+      const glm::mat4 matModelS = glm::scale(glm::mat4(1),
+        glm::vec3(512, 512, 1));
+      const glm::mat4 matModelT = glm::translate(glm::mat4(1), glm::vec3(-200, 100, 0));
+      const glm::mat4 matModel = matModelT * matModelS;
+      pipeline2D->SetMVP(matVP * matModel);
+      fboShadow->BindDepthStencilTexture(0);
       primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
     }
 

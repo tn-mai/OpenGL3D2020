@@ -143,6 +143,7 @@ public:
   Mesh::PrimitiveBuffer primitiveBuffer;
   Texture::Sampler sampler;
   Texture::Sampler samplerClampToEdge;
+  Texture::Sampler samplerShadow;
   GLFWwindow* window = nullptr;
 
   std::mt19937 random;

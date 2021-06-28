@@ -10,12 +10,14 @@
 */
 FramebufferObject::FramebufferObject(int w, int h, FboType type)
 {
-  texColor = std::make_shared<Texture::Image2D>("FBO(Color)", w, h, nullptr,
-    GL_RGBA, GL_UNSIGNED_BYTE, Texture::ImageType::framebuffer);
-  if (!texColor || !texColor->GetId()) {
-    std::cerr << "[エラー]" << __func__ << ":オフスクリーンバッファ用テクスチャの作成に失敗.\n";
-    texColor.reset();
-    return;
+  if (type != FboType::Depth) {
+    texColor = std::make_shared<Texture::Image2D>("FBO(Color)", w, h, nullptr,
+      GL_RGBA, GL_UNSIGNED_BYTE, Texture::ImageType::framebuffer);
+    if (!texColor || !texColor->GetId()) {
+      std::cerr << "[エラー]" << __func__ << ":オフスクリーンバッファ用テクスチャの作成に失敗.\n";
+      texColor.reset();
+      return;
+    }
   }
 
   if (type == FboType::Color) {
@@ -36,7 +38,11 @@ FramebufferObject::FramebufferObject(int w, int h, FboType type)
     }
 
     glCreateFramebuffers(1, &fbo);
-    glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, texColor->GetId(), 0);
+    if (type == FboType::Depth) {
+      glNamedFramebufferDrawBuffer(fbo, GL_NONE);
+    } else {
+      glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, texColor->GetId(), 0);
+    }
     glNamedFramebufferTexture(fbo, GL_DEPTH_STENCIL_ATTACHMENT, texDepthStencil->GetId(), 0);
   }
 

@@ -72,6 +72,7 @@ public:
 
   void SetWrapMode(GLenum mode);
   void SetFilter(GLenum filter);
+  void SetShadowMode(GLenum compareFunc);
   void Bind(GLuint unit) const;
   void Unbind() const;
 

@@ -202,8 +202,8 @@ Image2D::Image2D(const char* name, GLsizei width, GLsizei height, const void* da
     ToInternalFormat(imageType)))
 {
   if (id) {
-    glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_WIDTH, &width);
-    glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_HEIGHT, &height);
+    glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_WIDTH, &this->width);
+    glGetTextureLevelParameteriv(id, 0, GL_TEXTURE_HEIGHT, &this->height);
   }
   
   if (id) {
@@ -338,6 +338,25 @@ void Sampler::SetFilter(GLenum filter)
   }
   glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, minFilter);
   glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, filter);
+}
+
+/**
+* デプスシャドウマップ用の深度比較モードを設定する.
+*
+* @param compareFunc 設定する深度比較モード(GL_LEQUALなど).
+*                    深度比較モードを無効化するにはGL_NONEを指定する.
+*/
+void Sampler::SetShadowMode(GLenum compareFunc)
+{
+  if (!id) {
+    return;
+  }
+  if (compareFunc == GL_NONE) {
+    glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+  } else {
+    glSamplerParameteri(id, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glSamplerParameteri(id, GL_TEXTURE_COMPARE_FUNC, compareFunc);
+  }
 }
 
 /**

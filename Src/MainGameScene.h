@@ -84,6 +84,7 @@ private:
   SpriteRenderer spriteRenderer;
 
   std::shared_ptr<FramebufferObject> fboMain;
+  std::shared_ptr<FramebufferObject> fboShadow;
 
   Light::LightManagerPtr lightManager;
   Light::FrustumPtr frustum;

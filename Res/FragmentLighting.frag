@@ -5,6 +5,7 @@ layout(location=0) in vec4 inColor;
 layout(location=1) in vec2 inTexcoord;
 layout(location=2) in vec3 inPosition;
 layout(location=3) in vec3 inNormal;
+layout(location=4) in vec4 inShadowPosition;
 
 // 出力変数
 out vec4 fragColor;
@@ -13,6 +14,7 @@ out vec4 fragColor;
 layout(binding=0) uniform sampler2D texColor;
 layout(binding=1) uniform sampler2D texNormal;
 layout(binding=2) uniform sampler2D texMetallicSmoothness;
+layout(binding=4) uniform sampler2D texShadow;
 
 // 平行光源
 struct DirectionalLight {
@@ -46,6 +48,33 @@ const float Type_PointLight = 0;
 const float Type_SpotLight = 1;
 
 const float pi = 3.14159265358979323846264338327950288;
+
+// 影をぼかすためのサンプリング座標.
+#if 1
+const int poissonSampleCount = 4;
+const vec2 poissonDisc[poissonSampleCount] = {
+  { -0.94201624, -0.39906216 },
+  { 0.94558609, -0.76890725 },
+  { -0.094184101, -0.92938870 },
+  { 0.34495938, 0.29387760 },
+};
+#else
+const int poissonSampleCount = 12;
+const vec2 poissonDisc[poissonSampleCount] = {
+  {-0.326,-0.406},
+  {-0.840,-0.074},
+  {-0.696, 0.457},
+  {-0.203, 0.621},
+  { 0.962,-0.195},
+  { 0.473,-0.480},
+  { 0.519, 0.767},
+  { 0.185,-0.893},
+  { 0.507, 0.064},
+  { 0.896, 0.412},
+  {-0.322,-0.933},
+  {-0.792,-0.598}
+};
+#endif
 
 /**
 * ライト.
@@ -170,6 +199,17 @@ void main()
   // 光沢度をF0に転用するバージョン.
   //f0 = smoothness;
 
+  // 影の濃さを調べる
+  float z = inShadowPosition.z / inShadowPosition.w;
+  float shadow = float(textureProj(texShadow, inShadowPosition.xyw).r > z);
+  vec2 shadowTexelSize = vec2(1.0) / textureSize(texShadow, 0);
+  for (int i = 0; i < poissonSampleCount; ++i) {
+    vec3 uvw = inShadowPosition.xyw;
+    uvw.xy += poissonDisc[i] * shadowTexelSize;
+    shadow += float(textureProj(texShadow, uvw).r > z);
+  }
+  shadow *= 1.0 / float(poissonSampleCount + 1);
+
   vec3 viewVector = normalize(viewPosition - inPosition);
   vec3 worldNormal = computeNormal(viewVector);
   vec3 totalLightColor = ambientLight;
@@ -180,9 +220,9 @@ void main()
     float F = Fresnel(f0, -directionalLight.direction.xyz, viewVector);
 
     float theta = max(dot(worldNormal, -directionalLight.direction.xyz), 0);
-    totalLightColor += directionalLight.color.rgb * theta * (1 - F);
+    totalLightColor += directionalLight.color.rgb * theta * shadow * (1 - F);
 
-    totalSpecularColor += directionalLight.color.rgb * theta *
+    totalSpecularColor += directionalLight.color.rgb * theta * shadow *
       computeSpecular(-directionalLight.direction.xyz, worldNormal, viewVector, shininess, normalizationFactor) * F;
   }
 
