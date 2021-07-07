@@ -147,8 +147,8 @@ bool GameData::Initialize(GLFWwindow* window)
   primitiveBuffer.AddFromObjFile("Res/player_male/player_male_damage_2.obj");
 
   // パイプライン・オブジェクトを作成する.
-  pipeline = std::make_shared<Shader::Pipeline>("Res/FragmentLighting.vert", "Res/FragmentLighting.frag");
-  if (!pipeline || !*pipeline) {
+  pipeline3D = std::make_shared<Shader::Pipeline>("Res/FragmentLighting.vert", "Res/FragmentLighting.frag");
+  if (!pipeline3D || !*pipeline3D) {
     return false;
   }
   pipelineSimple = std::make_shared<Shader::Pipeline>("Res/Simple.vert", "Res/Simple.frag");

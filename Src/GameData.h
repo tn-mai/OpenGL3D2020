@@ -131,7 +131,7 @@ public:
   };
   void Draw(PrimNo) const;
 
-  std::shared_ptr<Shader::Pipeline> pipeline = nullptr;
+  std::shared_ptr<Shader::Pipeline> pipeline3D = nullptr;
   std::shared_ptr<Shader::Pipeline> pipelineSimple;
   std::shared_ptr<Shader::Pipeline> pipelineShadow;
   std::shared_ptr<Shader::Pipeline> pipelineSobelFilter;

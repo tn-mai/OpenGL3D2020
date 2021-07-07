@@ -83,7 +83,7 @@ private:
   std::vector<std::shared_ptr<Sprite>> sprites;
   SpriteRenderer spriteRenderer;
 
-  std::shared_ptr<FramebufferObject> fboMain;
+  std::shared_ptr<FramebufferObject> fbo;
   std::shared_ptr<FramebufferObject> fboShadow;
 
   Light::LightManagerPtr lightManager;

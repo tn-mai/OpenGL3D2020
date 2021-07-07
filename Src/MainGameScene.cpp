@@ -95,8 +95,8 @@ bool MainGameScene::Initialize()
   // FBOを初期化する.
   int w, h;
   glfwGetFramebufferSize(GameData::Get().window, &w, &h);
-  fboMain = std::make_shared<FramebufferObject>(w, h, FboType::ColorDepthStencil);
-  if (!fboMain || !fboMain->GetId()) {
+  fbo = std::make_shared<FramebufferObject>(w, h, FboType::ColorDepthStencil);
+  if (!fbo || !fbo->GetId()) {
     return false;
   }
   fboShadow = std::make_shared<FramebufferObject>(4096, 4096, FboType::Depth);
@@ -480,7 +480,7 @@ void MainGameScene::Render(GLFWwindow* window) const
 
   GameData& global = GameData::Get();
   GameData& gamedata = GameData::Get();
-  std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline;
+  std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline3D;
   Mesh::PrimitiveBuffer& primitiveBuffer = global.primitiveBuffer;
 
   const Shader::DirectionalLight directionalLight{
@@ -537,7 +537,7 @@ void MainGameScene::Render(GLFWwindow* window) const
   }
 
   // 描画先をフレームバッファオブジェクトに変更.
-  fboMain->Bind();
+  fbo->Bind();
   glDisable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を無効にする
 
   glEnable(GL_DEPTH_TEST);
@@ -678,7 +678,7 @@ void MainGameScene::Render(GLFWwindow* window) const
   primitiveBuffer.BindVertexArray();
 
   // 描画先をデフォルトのフレームバッファに戻す.
-  fboMain->Unbind();
+  fbo->Unbind();
 
   glEnable(GL_FRAMEBUFFER_SRGB); // ガンマ補正を有効にする
 
@@ -706,9 +706,9 @@ void MainGameScene::Render(GLFWwindow* window) const
       pipeline->Bind();
 
       glDisable(GL_BLEND);
-      fboMain->BindColorTexture(0);
+      fbo->BindColorTexture(0);
 
-      fboMain->BindDepthStencilTexture(2);
+      fbo->BindDepthStencilTexture(2);
 
       GameData::Get().texHatching->Bind(1);
 
@@ -720,8 +720,8 @@ void MainGameScene::Render(GLFWwindow* window) const
       primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
 
       GameData::Get().texHatching->Unbind();
-      fboMain->UnbindColorTexture();
-      fboMain->UnbindDepthStencilTexture();
+      fbo->UnbindColorTexture();
+      fbo->UnbindDepthStencilTexture();
       glEnable(GL_BLEND);
     }
 

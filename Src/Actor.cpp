@@ -21,7 +21,7 @@ const float maxMorphTransitionTime = 0.2f;
 Actor::Actor(std::string name, const Mesh::Primitive* prim,
   std::shared_ptr<Texture::Image2D> tex, const glm::vec3& pos) :
   name(name), primitive(prim), texture(tex),
-  material(std::make_shared<Material>(GameData::Get().pipeline)),
+  material(std::make_shared<Material>(GameData::Get().pipeline3D)),
   position(pos)
 {
 }
@@ -342,7 +342,7 @@ void RenderActorList(const ActorList& actorList,
 {
   GameData& global = GameData::Get();
   for (size_t i = 0; i < actorList.size(); ++i) {
-    actorList[i]->Draw(*global.pipeline, matVP, drawType);
+    actorList[i]->Draw(*global.pipeline3D, matVP, drawType);
   }
 }
 
