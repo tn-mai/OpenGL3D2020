@@ -118,6 +118,12 @@ int main()
     Output(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS); // è≠Ç»Ç≠Ç∆Ç‡8
     Output(GL_MAX_SHADER_STORAGE_BLOCK_SIZE); // è≠Ç»Ç≠Ç∆Ç‡16MB
     Output(GL_MIN_MAP_BUFFER_ALIGNMENT);
+    GLint extCount;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &extCount);
+    for (GLint i = 0; i < extCount; ++i) {
+      const GLubyte* ext = glGetStringi(GL_EXTENSIONS, i);
+      std::cout << "  " << ext << "\n";
+    }
 #undef Output
   }
 
