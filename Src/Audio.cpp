@@ -125,6 +125,8 @@ bool Audio::Initialize(const char* acfPath, const char* dspBusName)
   // Load‚Å‘Î‰‚Ã‚¯‚ªs‚í‚êAUnload‚Å‰ğœ‚³‚ê‚é.
   cueIdToAcbMap.resize(4096);
 
+  SetMasterVolume(0.5f);
+
   isInitialized = true;
   return true;
 }
