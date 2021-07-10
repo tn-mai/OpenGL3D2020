@@ -13,6 +13,7 @@ out vec4 fragColor;
 layout(binding=0) uniform sampler2D texColor;
 layout(binding=1) uniform sampler2D texHatching;
 layout(binding=2) uniform sampler2D texDepth;
+layout(binding=3) uniform sampler2D texBloom;
 
 // ポアソンディスク配列
 // https://github.com/spite/Wagner/blob/master/fragment-shaders/poisson-disc-blur-fs.glsl
@@ -135,4 +136,7 @@ void main()
 
   // 斜線と輪郭の色を元の色に乗算.
   fragColor.rgb *= mix(pencil * outline, vec3(1.0), bokeh);
+
+  // ブルームを加算.
+  fragColor.rgb += texture(texBloom, inTexcoord).rgb * (1.0 / 6.0);
 }

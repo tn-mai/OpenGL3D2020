@@ -84,7 +84,8 @@ private:
   SpriteRenderer spriteRenderer;
 
   std::shared_ptr<FramebufferObject> fbo;
-  std::shared_ptr<FramebufferObject> fboShadow;
+  std::shared_ptr<FramebufferObject> fboShadow; // 影描画用
+  std::shared_ptr<FramebufferObject> fboBloom[6]; // ブルームエフェクト用
 
   Light::LightManagerPtr lightManager;
   Light::FrustumPtr frustum;

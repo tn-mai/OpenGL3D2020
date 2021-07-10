@@ -88,6 +88,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Src\glad\include;C:\usr\local\bin\cri\pc\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks>UninitializedLocalUsageCheck</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -103,6 +104,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Src\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks>UninitializedLocalUsageCheck</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -172,6 +174,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Res\DeathEffect.frag" />
+    <None Include="Res\Filter_HighBrightness.frag" />
     <None Include="Res\Filter_Hatching.frag" />
     <None Include="Res\Filter_Outline.frag" />
     <None Include="Res\Filter_Posterization.frag" />

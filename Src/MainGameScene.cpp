@@ -99,9 +99,23 @@ bool MainGameScene::Initialize()
   if (!fbo || !fbo->GetId()) {
     return false;
   }
+
+  // デプシャドウマッピング用のFBOを作成.
   fboShadow = std::make_shared<FramebufferObject>(4096, 4096, FboType::Depth);
   if (!fboShadow || !fboShadow->GetId()) {
     return false;
+  }
+
+  // ブルームエフェクト用のFBOを作成.
+  int bloomW = w;
+  int bloomH = h;
+  for (size_t i = 0; i < std::size(fboBloom); ++i) {
+    bloomW /= 2;
+    bloomH /= 2;
+    fboBloom[i]= std::make_shared<FramebufferObject>(bloomW, bloomH, FboType::Color);
+    if (!fboBloom[i]|| !fboBloom[i]->GetId()) {
+      return false;
+    }
   }
 
   texGround = std::make_shared<Texture::Image2D>("Res/Ground.tga");
@@ -222,6 +236,7 @@ bool MainGameScene::Initialize()
     static const glm::vec3 pos[] = {
       { -16, 0, -16 }, { -16, 0, -10 }, { -16, 0, -4 },
       { -16, 0,   2 }, { -16, 0,   8 }, { -16, 0, 14 },
+      { -6,  0,   6 }, {  6, 0, 6},
     };
     for (const auto& e : pos) {
       std::shared_ptr<Actor> actor = std::make_shared<Actor>(
@@ -229,8 +244,14 @@ bool MainGameScene::Initialize()
       actor->SetBoxCollision(glm::vec3(-0.2f, 0, -0.2f), glm::vec3(0.2f, 4, 0.2f));
       //actor->rotation.y = glm::radians(180.0f);
       actors.push_back(actor);
-      lightManager->CreateSpotLight(e + glm::vec3(1, 4, 0), glm::vec3(1, 0.9f, 0.8f) * 100.0f, glm::vec3(0, -1, 0),
-        glm::radians(30.0f), glm::radians(15.0f));
+      if (e.x == 6) {
+        actor->rotation.y = 3.1415f;
+        lightManager->CreateSpotLight(e + glm::vec3(-1, 4, 0), glm::vec3(1, 0.9f, 0.8f) * 100.0f, glm::vec3(0, -1, 0),
+          glm::radians(30.0f), glm::radians(15.0f));
+      } else {
+        lightManager->CreateSpotLight(e + glm::vec3(1, 4, 0), glm::vec3(1, 0.9f, 0.8f) * 100.0f, glm::vec3(0, -1, 0),
+          glm::radians(30.0f), glm::radians(15.0f));
+      }
     }
   }
 
@@ -483,11 +504,21 @@ void MainGameScene::Render(GLFWwindow* window) const
   std::shared_ptr<Shader::Pipeline> pipeline = global.pipeline3D;
   Mesh::PrimitiveBuffer& primitiveBuffer = global.primitiveBuffer;
 
+#define TIME_SETTING_NOON 0
+#define TIME_SETTING_SUNSET 1
+#define TIME_SETTING_NIGHT 2
+
+#define TIME_SETTING TIME_SETTING_NOON
+
   const Shader::DirectionalLight directionalLight{
     glm::normalize(glm::vec4(3,-2,-2, 0)),
+#if TIME_SETTING == TIME_SETTING_NOON
     glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 4.0f, 1) // 昼
-    //glm::vec4(glm::vec3(1, 0.5f, 0.2f) * 2.0f, 1) // 夕方
-    //glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.5f, 1) // 夜
+#elif TIME_SETTING == TIME_SETTING_SUNSET
+    glm::vec4(glm::vec3(1, 0.5f, 0.2f) * 2.0f, 1) // 夕方
+#else // TIME_SETTING == TIME_SETTING_NIGHT
+    glm::vec4(glm::vec3(1, 0.9f, 0.8f) * 0.25f, 1) // 夜
+#endif
   };
 
   // 影描画用FBOに描画する.
@@ -547,10 +578,13 @@ void MainGameScene::Render(GLFWwindow* window) const
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   // 環境光を設定する.
+#if TIME_SETTING == TIME_SETTING_NOON
   pipeline->SetAmbientLight(glm::vec3(0.1f, 0.125f, 0.15f)); // 昼
-  //pipeline->SetAmbientLight(glm::vec3(0.09f, 0.05f, 0.1f)); // 夕方 
-  //pipeline->SetAmbientLight(glm::vec3(0.02f, 0.01f, 0.03f)); // 夜
-
+#elif TIME_SETTING == TIME_SETTING_SUNSET
+  pipeline->SetAmbientLight(glm::vec3(0.09f, 0.05f, 0.1f)); // 夕方 
+#else // TIME_SETTING == TIME_SETTING_NIGHT
+  pipeline->SetAmbientLight(glm::vec3(0.02f, 0.01f, 0.03f)); // 夜
+#endif
 
   // 平行光源を設定する
   pipeline->SetLight(directionalLight);
@@ -677,6 +711,50 @@ void MainGameScene::Render(GLFWwindow* window) const
   // 3Dモデル用のVAOをバインドしなおしておく.
   primitiveBuffer.BindVertexArray();
 
+  // ブルームエフェクトを描画.
+  {
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    gamedata.samplerPostEffect.Bind(0);
+
+    // planeモデルのサイズは0.5x0.5なので1.0x1.0になるような行列を設定.
+    const glm::mat4 matMVP = glm::scale(glm::mat4(1), glm::vec3(2));
+
+    // 明るい成分をfboBloom[0]に抽出する.
+    gamedata.pipelineHighBrightness->Bind();
+    gamedata.pipelineHighBrightness->SetMVP(matMVP);
+    fboBloom[0]->Bind();
+    fbo->BindColorTexture(0);
+    primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+
+    // 明るい成分をぼかしながら縮小コピー.
+    gamedata.pipelineBlur->Bind();
+    gamedata.pipelineBlur->SetMVP(matMVP);
+    for (size_t i = 1; i < std::size(fboBloom); ++i) {
+      fboBloom[i]->Bind();
+      fboBloom[i - 1]->BindColorTexture(0);
+      primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+    }
+
+    // ぼかした結果を拡大しながら合計する.
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+    gamedata.pipelineSimple->Bind();
+    gamedata.pipelineSimple->SetMVP(matMVP);
+    for (size_t i = std::size(fboBloom) - 1; i > 0; --i) {
+      fboBloom[i - 1]->Bind();
+      fboBloom[i]->BindColorTexture(0);
+      primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+    }
+
+    // OpenGL機能の設定を元に戻す.
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  }
+
   // 描画先をデフォルトのフレームバッファに戻す.
   fbo->Unbind();
 
@@ -707,10 +785,9 @@ void MainGameScene::Render(GLFWwindow* window) const
 
       glDisable(GL_BLEND);
       fbo->BindColorTexture(0);
-
       fbo->BindDepthStencilTexture(2);
-
       GameData::Get().texHatching->Bind(1);
+      fboBloom[0]->BindColorTexture(3);
 
       const glm::mat4 matModelS = glm::scale(glm::mat4(1),
         glm::vec3(fbw, fbh, 1));
@@ -719,6 +796,7 @@ void MainGameScene::Render(GLFWwindow* window) const
       pipeline->SetMVP(matVP * matModel);
       primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
 
+      fboBloom[0]->UnbindColorTexture();
       GameData::Get().texHatching->Unbind();
       fbo->UnbindColorTexture();
       fbo->UnbindDepthStencilTexture();
@@ -757,6 +835,29 @@ void MainGameScene::Render(GLFWwindow* window) const
       pipeline2D->SetMVP(matVP * matModel);
       fboShadow->BindDepthStencilTexture(0);
       primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+    }
+
+    if (false) {
+      gamedata.samplerNearest.Bind(0);
+      glDisable(GL_BLEND);
+      glm::vec3 pos(-640, 360, 0);
+      for (size_t i = 0; i < std::size(fboBloom); ++i) {
+        float w = static_cast<float>(fboBloom[i]->GetWidht());
+        float h = static_cast<float>(fboBloom[i]->GetHeight());
+        const glm::mat4 matModelS = glm::scale(glm::mat4(1),
+          glm::vec3(w, h, 1));
+        pos.x = -640 + w / 2;
+        pos.y -= h / 2;
+        const glm::mat4 matModelT = glm::translate(glm::mat4(1), pos);
+        const glm::mat4 matModel = matModelT * matModelS;
+        pipeline2D->SetMVP(matVP * matModel);
+        fboBloom[i]->BindColorTexture(0);
+        primitiveBuffer.Get(GameData::PrimNo::plane).Draw();
+
+        pos.y -= h - h / 2;
+      }
+      glEnable(GL_BLEND);
+      gamedata.samplerClampToEdge.Bind(0);
     }
 
     // ゲームクリア画像を描画.

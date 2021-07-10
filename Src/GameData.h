@@ -132,16 +132,19 @@ public:
   void Draw(PrimNo) const;
 
   std::shared_ptr<Shader::Pipeline> pipeline3D = nullptr;
-  std::shared_ptr<Shader::Pipeline> pipelineSimple;
+  std::shared_ptr<Shader::Pipeline> pipelineSimple; // pipeline2D
   std::shared_ptr<Shader::Pipeline> pipelineShadow;
   std::shared_ptr<Shader::Pipeline> pipelineSobelFilter;
-  std::shared_ptr<Shader::Pipeline> pipelineGaussianFilter;
+  std::shared_ptr<Shader::Pipeline> pipelineBlur;
   std::shared_ptr<Shader::Pipeline> pipelinePosterization;
-  std::shared_ptr<Shader::Pipeline> pipelineHatching;
+  std::shared_ptr<Shader::Pipeline> pipelineHatching; // pipelinePencil
   std::shared_ptr<Shader::Pipeline> pipelineOutline;
   std::shared_ptr<Shader::Pipeline> pipelineDeathEffect;
+  std::shared_ptr<Shader::Pipeline> pipelineHighBrightness;
   Mesh::PrimitiveBuffer primitiveBuffer;
   Texture::Sampler sampler;
+  Texture::Sampler samplerPostEffect;
+  Texture::Sampler samplerNearest;
   Texture::Sampler samplerClampToEdge;
   Texture::Sampler samplerShadow;
   GLFWwindow* window = nullptr;

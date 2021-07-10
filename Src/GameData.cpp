@@ -163,8 +163,8 @@ bool GameData::Initialize(GLFWwindow* window)
   if (!pipelineSobelFilter || !*pipelineSobelFilter) {
     return false;
   }
-  pipelineGaussianFilter = std::make_shared<Shader::Pipeline>("Res/Simple.vert", "Res/Filter_GaussianBlur.frag");
-  if (!pipelineGaussianFilter || !*pipelineGaussianFilter) {
+  pipelineBlur = std::make_shared<Shader::Pipeline>("Res/Simple.vert", "Res/Filter_GaussianBlur.frag");
+  if (!pipelineBlur || !*pipelineBlur) {
     return false;
   }
   pipelinePosterization = std::make_shared<Shader::Pipeline>("Res/Simple.vert", "Res/Filter_Posterization.frag");
@@ -183,10 +183,21 @@ bool GameData::Initialize(GLFWwindow* window)
   if (!pipelineDeathEffect|| !*pipelineDeathEffect) {
     return false;
   }
+  pipelineHighBrightness = std::make_shared<Shader::Pipeline>(
+    "Res/Simple.vert", "Res/Filter_HighBrightness.frag");
+  if (!pipelineHighBrightness || !*pipelineHighBrightness) {
+    return false;
+  }
 
   // サンプラ・オブジェクトを作成する.
   sampler.SetWrapMode(GL_REPEAT);
   sampler.SetFilter(GL_LINEAR);
+
+  samplerPostEffect.SetWrapMode(GL_CLAMP_TO_EDGE);
+  samplerPostEffect.SetFilter(GL_LINEAR);
+
+  samplerNearest.SetWrapMode(GL_CLAMP_TO_EDGE);
+  samplerNearest.SetFilter(GL_NEAREST);
 
   samplerClampToEdge.SetWrapMode(GL_CLAMP_TO_EDGE);
   samplerClampToEdge.SetFilter(GL_LINEAR);
@@ -197,7 +208,7 @@ bool GameData::Initialize(GLFWwindow* window)
 
   this->window = window;
 
-  random.seed(std::random_device{}());
+  //random.seed(std::random_device{}());
 
   /* アニメーションデータを作成 */
 

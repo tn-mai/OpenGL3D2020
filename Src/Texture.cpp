@@ -149,7 +149,7 @@ GLenum ToInternalFormat(ImageType imageType)
 {
   switch (imageType) {
   default:
-  case ImageType::framebuffer: return GL_RGBA8;
+  case ImageType::framebuffer: return GL_RGBA16F;
   case ImageType::depthbuffer: return GL_DEPTH24_STENCIL8;
   case ImageType::color:       return GL_SRGB8_ALPHA8;
   case ImageType::non_color:   return GL_RGBA8;
@@ -332,7 +332,7 @@ void Sampler::SetFilter(GLenum filter)
   if (!id) {
     return;
   }
-  GLenum minFilter = GL_NEAREST_MIPMAP_LINEAR;
+  GLenum minFilter = GL_LINEAR_MIPMAP_NEAREST;
   if (filter == GL_NEAREST) {
     minFilter = GL_NEAREST_MIPMAP_NEAREST;
   }
